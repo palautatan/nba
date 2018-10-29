@@ -1,0 +1,198 @@
+---
+title: "Frequent Fliers"
+author: "Edie Espejo"
+date: "10/9/2018"
+output: html_document
+---
+
+### Now, we can learn a bunch!
+We have found out there are `r nrow(all_players_df)` entries of basketball players in the NBA.
+
+```{r}
+this_player_url <- all_players_df[4,2]
+
+gather_player_info <- function(player_df_row) {
+  this_player <- as.character(player_df_row[1])
+  this_player_url <- as.character(player_df_row[2])
+
+  webpage_2 <- read_html(this_player_url)
+  results_2 <- webpage_2 %>% html_nodes("table")
+  
+  pg_table <- html_table(results_2)[[1]]
+  pg_table <- pg_table %>% filter(grepl("\\-", Season))
+
+  info <- pg_table %>% summarize(min_age=min(as.integer(Age)),
+                                max_age=max(as.integer(Age)),
+                                num_years=max_age-min_age,
+                                num_teams=length(unique(Tm)),
+                                pts_prime=Age[which.max(PTS)],
+                                max_avg_pts=max(PTS))
+
+  info <- cbind(this_player, info)
+  info
+}
+
+info_df <- apply(all_players_df, 1, gather_player_info)
+test <- do.call(rbind, info_df)
+# write.csv(test, "nba_data.csv")
+```
+
+### Woah, we have so much data?!
+
+
+```{r}
+test <- test %>% filter(!grepl("Did Not", max_avg_pts)) %>%
+  mutate(max_avg_pts=as.numeric(as.character(max_avg_pts))) %>%
+  filter(!is.na(max_avg_pts)) %>% filter(!is.na(pts_prime))
+```
+
+```{r}
+means <- test %>% summarize_all(mean)
+means[,-1]
+```
+
+```{r}
+ggplot(test, aes(x=max_avg_pts)) +
+  geom_histogram(binwidth = 1) +
+  ggtitle("Average Maximum Points Per NBA Game") +
+  xlab("points")
+```
+
+```{r}
+ggplot(test, aes(x=pts_prime)) +
+  geom_bar() +
+  ggtitle("At what age did NBA players have their highest PPG?") +
+  xlab("age")
+```
+
+```{r}
+ggplot(test, aes(x=min_age)) +
+  geom_bar() +
+  ggtitle("At what age did NBA players start their career?") +
+  xlab("age")
+```
+
+```{r}
+test %>% arrange(-max_avg_pts)
+```
+
+```{r}
+ggplot(test, aes(x=max_age)) +
+  geom_bar() +
+  ggtitle("At what age do NBA players retire?") +
+  xlab("age")
+```
+
+```{r}
+ggplot(test, aes(x=num_teams)) +
+  geom_bar() +
+  ggtitle("How many teams did NBA players play for?") +
+  xlab("teams")
+```
+
+```{r}
+test %>% summarize(these_avg_pts=median(num_teams))
+
+test %>%
+  summarize(these_avg_pts=median(max_avg_pts))
+
+test %>% filter(num_teams>=8) %>%
+  summarize(these_avg_pts=median(max_avg_pts))
+
+test %>% filter(num_teams>=8) %>%
+  select(-min_age, -max_age) %>%
+  rename(prime_age=pts_prime) %>%
+  arrange(-num_years)
+```
+
+```{r}
+freq_fliers <- test %>% filter(num_teams>=8) %>%
+  select(-min_age, -max_age) %>%
+  rename(prime_age=pts_prime) %>%
+  arrange(-num_years)
+head(freq_fliers)
+```
+
+```{r}
+ggplot(freq_fliers, aes(x=num_years)) +
+  geom_bar(fill="midnightblue") +
+  geom_vline(xintercept=mean(freq_fliers$num_years), lwd=2, col=alpha("gold", 0.7)) +
+  xlab("number of years") +
+  ggtitle("How long did NBA players who played on 8 or more teams stay in the league?") +
+  theme_classic()
+```
+
+```{r}
+ggplot(freq_fliers, aes(x=max_avg_pts)) +
+  geom_histogram(binwidth=2, fill="midnightblue", col="white") +
+  geom_vline(xintercept=mean(freq_fliers$max_avg_pts), lwd=2, col=alpha("gold", 0.6)) +
+  xlab("points per game") +
+  ggtitle("What was the max points achieved by NBA players who played on 8 or more teams?") +
+  theme_classic()
+```
+
+```{r}
+ggplot(freq_fliers, aes(x=prime_age)) +
+  geom_histogram(binwidth=1, col="white", fill="midnightblue") +
+  geom_vline(xintercept=mean(freq_fliers$prime_age), lwd=2, col=alpha("gold", 0.7)) +
+  xlab("age") +
+  ggtitle("At what age did they achieve those points?") +
+  theme_classic()
+
+median(freq_fliers$prime_age)
+median(test$pts_prime)
+```
+
+
+
+
+
+
+
+
+
+
+
+### FROM WEBSCRAPE 3, DUBS
+#### Weigh in on the Dubs
+```{r}
+dubs <- franchises %>% filter(grepl("Warriors", team))
+dubs
+```
+
+```{r}
+dubs_all_time <- read_html(dubs[,2]) %>% html_nodes("table") %>% html_table()
+
+dubs_all_time <- data.frame(dubs_all_time)
+names(dubs_all_time) <- dubs_all_time[1,]
+
+dubs_all_time <- dubs_all_time[!duplicated(dubs_all_time[,1]),]
+dubs_all_time
+```
+
+```{r}
+dubs_all_time <- dubs_all_time[-1,]
+names(dubs_all_time)[which(duplicated(names(dubs_all_time)))] <- paste0(names(dubs_all_time)[which(duplicated(names(dubs_all_time)))], "_pg")
+
+dubs_all_time <- dubs_all_time %>% filter(MP!="Totals")
+dubs_all_time
+```
+
+```{r}
+dubs_all_time %>% filter(To=="2018")
+```
+
+
+
+```{r, include=FALSE}
+hawks <- "http://www.nba.com/teams/hawks"
+webpage <- read_html(hawks)
+
+team_roster <- cbind(player=webpage %>% html_nodes("a") %>% html_attr("title"),
+                     url=webpage %>% html_nodes("a") %>% html_attr("href")
+                     )
+
+team_roster <- team_roster[!is.na(team_roster[,1]),]
+team_roster <- team_roster[grepl("players", team_roster[,2]),]
+team_roster
+```
