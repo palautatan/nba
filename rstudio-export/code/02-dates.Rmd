@@ -1,0 +1,109 @@
+---
+title: "Dates"
+author: "Edie Espejo"
+date: "2/27/2019"
+output: html_document
+---
+
+```{r}
+library(forcats)
+library(ggplot2)
+```
+
+```{r}
+all_downloads <- list.files("../data")
+head(all_downloads)
+```
+
+The following pattern should be quite obvious but I just wanted to see it.
+
+```{r}
+sort(table(sapply(strsplit(all_downloads, "-"), function(x) x[1])), decreasing=TRUE)
+```
+
+```{r}
+gsw_games <- all_downloads[which(grepl("gsw", all_downloads))]
+gsw_basic <- gsw_games[which(grepl("basic", gsw_games))]
+gsw_basic
+```
+
+```{r}
+toMinutes <- function(time) {
+  if (grepl(":", time)) {
+    minutes <- strsplit(time, ":")[[1]][1]
+    seconds <- strsplit(time, ":")[[1]][2]
+    as.numeric(minutes) + as.numeric(seconds)/60
+  } else {
+    0
+  }
+}
+```
+
+```{r}
+head(g1)
+```
+
+```{r}
+ggplot(g1 %>% filter(Player!="Team Totals") %>% filter(PTS!="Did Not Play"), aes(x=Player, y=PTS)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+g1 <- read.csv(paste0("../data/", gsw_basic[1]))[,-1]
+g1 <- cbind(g1, mp_fix=sapply(g1$MP, function(x) toMinutes(as.character(x))))
+
+g1 %>% filter(Player!="Team Totals") %>%
+    mutate(ppm=as.numeric(PTS)/mp_fix) %>%
+    mutate(Player=fct_reorder(Player, mp_fix, .desc = TRUE)) %>%
+    ggplot(aes(x = Player, y = mp_fix, fill=ppm)) + 
+      geom_bar(stat="identity") + 
+      ylab("Minutes Played") +
+      scale_fill_continuous(name="Points per minute") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Warriors: Minutes played and points per minute")
+```
+
+```{r}
+g2 <- read.csv(paste0("../data/", gsw_basic[2]))[,-1]
+g2 <- cbind(g2, mp_fix=sapply(g2$MP, function(x) toMinutes(as.character(x))))
+
+g2 %>% filter(Player!="Team Totals") %>%
+    mutate(ppm=as.numeric(PTS)/mp_fix) %>%
+    mutate(Player=fct_reorder(Player, mp_fix, .desc = TRUE)) %>%
+    ggplot(aes(x = Player, y = mp_fix, fill=ppm)) + 
+      geom_bar(stat="identity") + 
+      ylab("Minutes Played") +
+      scale_fill_continuous(name="Points per minute") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Minutes played and points per minute")
+```
+
+```{r}
+ppm_plot <- function(graph_number) {
+  g <- read.csv(paste0("../data/", gsw_basic[graph_number]))[,-1]
+  # g <- read.csv(paste0("data/", gsw_basic[graph_number]))[,-1]
+  g <- cbind(g, mp_fix=sapply(g$MP, function(x) toMinutes(as.character(x))))
+
+  g %>% filter(Player!="Team Totals") %>%
+      mutate(ppm=as.numeric(PTS)/mp_fix) %>%
+      mutate(Player=fct_reorder(Player, mp_fix, .desc = TRUE)) %>%
+      ggplot(aes(x = Player, y = mp_fix, fill=ppm)) + 
+        geom_bar(stat="identity") + 
+        ylab("Minutes Played") +
+        scale_fill_continuous(name="Points per minute") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        ggtitle("Minutes played and points per minute")
+}
+```
+
+```{r}
+for (ix in 1:length(gsw_basic)) {
+  name <- gsub("csv", "jpg", gsw_basic[ix])
+  name <- paste0("../plots/ppm-plots/", name)
+  plot <- ppm_plot(ix)
+  ggsave(filename=name, plot=plot)
+}
+```
+
+```{r}
+
+```

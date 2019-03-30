@@ -1,0 +1,133 @@
+---
+title: "Easy, Simple Way to Retrieve Basketball Data"
+author: "Edie Espejo"
+date: "2/27/2019"
+output: html_document
+---
+
+```{r}
+library(rvest)
+```
+
+# Game URLS
+
+```{r retrieve-urls}
+# * SET STARTING URL
+year_url <- "https://www.basketball-reference.com/playoffs/NBA_2018.html"
+html     <- read_html(year_url)
+
+
+# * COLLECT GAME AND PLAYOFF URLS
+url <- html %>% 
+  html_nodes("#div_all_playoffs") %>%
+  html_nodes("a") %>%
+  html_attr("href")
+
+txt <- html %>% 
+  html_nodes("#div_all_playoffs") %>%
+  html_nodes("a") %>%
+  html_text()
+
+
+# * CREATE DATAFRAME
+frame <- data.frame(cbind(txt, url))
+games <- frame[grepl("Game", txt),]
+names(games) <- c("game", "url")
+rownames(games) <- 1:nrow(games)
+
+
+# * MAKE ABS PATHS
+games <- games %>% mutate(url=paste0("https://www.basketball-reference.com", as.character(url)))
+head(games)
+```
+
+# Collect tables
+
+```{r}
+clean_stats <- function(bbtable) {
+  header_ix <- grep(pattern="Starters|Reserves", bbtable[,1])
+  labels    <- bbtable[header_ix[1],]
+  labels[1] <- "Player"
+
+  bbtable <- bbtable[-header_ix,]
+  names(bbtable) <- labels
+  bbtable
+}
+```
+
+```{r}
+main <- function(this_game_url) {
+  this_html   <- read_html(this_game_url)
+  table_names <- this_html %>% html_nodes("div table") %>% html_attr("id")
+  tables      <- html_table(this_html)
+  
+  this_game_stats <- lapply(tables, clean_stats)
+  
+  
+  bball_ref  <- strsplit(strsplit(this_game_url, "boxscores/")[[1]][2], ".html")[[1]][1]
+  bball_ref  <- paste0(strsplit(bball_ref, "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)", perl=TRUE)[[1]], collapse="-")
+  table      <- gsub("_", "-", gsub("#box_", "", table_names))
+  file_names <- paste0("../data/", bball_ref, "-", table, ".csv")
+  
+  for (ix in 1:length(this_game_stats)) {
+    write.csv(x=this_game_stats[[ix]], file=file_names[ix])
+  }
+}
+```
+
+```{r}
+this_game_stats
+```
+
+
+```{r}
+for (ix in 1:nrow(games)) {
+  main(games[ix,2])
+}
+```
+
+
+# Document game directory
+
+```{r}
+game_directory <- rep(0, nrow(games))
+team_directory <- rep(0, nrow(games))
+
+for (ix in 1:nrow(games)) {
+  this_html   <- read_html(games[ix,2])
+  page_title  <- this_html %>% html_nodes("h1") %>% html_text()
+  teams       <- strsplit(page_title, "( at )|( Box)")[[1]][1:2]
+  
+  game_directory[ix]  <- page_title
+  team_directory[ix]  <- paste0(teams, collapse=" v. ")
+}
+
+games <- cbind(games, game_directory, team_directory)
+games <- data.frame(games)
+
+write.csv(x=games, file="../game_directory.csv")
+```
+
+```{r}
+library(dplyr)
+
+get_dates <- strsplit(x=as.character(games %>% pull(game_directory)), split="Score, ")
+dates <- sapply(get_dates, function(x) x[2])
+
+hot_dates <- betterDates <- as.Date(dates, format = "%B %d, %Y")
+```
+
+
+```{r}
+teams <- strsplit(x=as.character(games %>% pull(team_directory)), split=" v. ")
+teams
+
+home <- sapply(teams, function(x) x[2])
+away <- sapply(teams, function(x) x[1])
+```
+
+```{r}
+games <- games %>% select(game, url)
+games <- cbind(hot_dates, games, home, away)
+games <- games %>% rename(date=hot_dates)
+```

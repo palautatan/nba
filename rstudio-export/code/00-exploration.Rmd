@@ -1,0 +1,296 @@
+---
+title: "2018 Playoffs"
+author: "Edie Espejo"
+date: "1/3/2019, 1/20/2019"
+output: html_document
+---
+
+```{r, warning=FALSE, message=FALSE}
+library(rvest)
+```
+
+We will begin with the 2018 season.
+
+## Sifting through the first page
+We will be working off of <a href="https://www.basketball-reference.com/playoffs/NBA_2018.html">this</a> webpage. I want to retrieve links for all of the basketball games during the 2018 Playoffs.
+
+```{r}
+year_url <- "https://www.basketball-reference.com/playoffs/NBA_2018.html"
+html     <- read_html(year_url)
+```
+
+Next, I'm going to read in the playoff game module.
+
+```{r} 
+url <- html %>% 
+  html_nodes("#div_all_playoffs") %>%
+  html_nodes("a") %>%
+  html_attr("href")
+
+txt <- html %>% 
+  html_nodes("#div_all_playoffs") %>%
+  html_nodes("a") %>%
+  html_text()
+```
+
+I'm only going to keep the links that are to game stats.
+
+```{r}
+frame <- data.frame(cbind(txt, url))
+games <- frame[grepl("Game", txt),]
+names(games) <- c("game", "url")
+rownames(games) <- 1:nrow(games)
+```
+
+## Acquiring stats from a game page
+Now, I'm going to write up how to get game stats from a game page. We want to get both the **Basic Box Score Stats** and the **Advanced Box Score Stats** tables. Something interesting to gather would also be the **game attendance** and **game duration (total time)**.
+
+```{r}
+url    <- paste0("https://www.basketball-reference.com", as.character(games[1,]$url))
+html_k <- read_html(url)
+url
+```
+
+
+### Grabbing tables
+This part, I am working on with the knowledge that the boxes are named as `box_cle_classic`. **I need to make this more general.**
+
+#### Basic stats
+
+```{r}
+cle_basic <- html_k %>% html_nodes("#box_cle_basic") %>% html_table()
+cle_basic <- cle_basic[[1]]
+head(cle_basic)
+```
+
+#### Advanced stats
+```{r}
+cle_adv   <- html_k %>% html_nodes("#box_cle_advanced") %>% html_table()
+cle_adv   <- cle_adv[[1]]
+head(cle_adv)
+```
+
+### Reformatting
+Clearly, there are issues with formatting. We need to fix these up.
+
+```{r}
+header_ix <- grep(pattern="Starters|Reserves", cle_basic[,1])
+labels    <- cle_basic[header_ix[1],]
+labels[1] <- "Player"
+
+cle_basic <- cle_basic[-header_ix,]
+names(cle_basic) <- labels
+cle_basic
+```
+
+I frankly think we need a function so that we can do this for each of the tables we will be scraping, so here goes.
+
+```{r}
+clean_stats <- function(bbtable) {
+  header_ix <- grep(pattern="Starters|Reserves", bbtable[,1])
+  labels    <- bbtable[header_ix[1],]
+  labels[1] <- "Player"
+
+  bbtable <- bbtable[-header_ix,]
+  names(bbtable) <- labels
+  bbtable
+}
+```
+
+```{r}
+clean_stats(cle_adv)
+```
+
+After inspection of this table, I know I have to ... quick diversion.
+
+### But generalizing the table search to all games ... ?
+I think I can do this by figuring out the name of the teams. The best I could do is just take header 1 because it'll be the same on each of the bball ref pages.
+
+```{r}
+page_title <- html_k %>% html_nodes("h1") %>% html_text()
+page_title
+```
+
+I need to parse this, then make a general function afterward.
+
+```{r}
+teams <- strsplit(page_title, "( at )|( Box)")[[1]][1:2]
+teams
+```
+
+Now, I need their acronyms. I think I can find this somewhere on the website.
+
+...
+
+You know, I think I can probably just string match for capital three letters throughout the webpage.
+
+```{r}
+table_names <- html_k %>% html_nodes("div table") %>% html_attr("id")
+table_names
+```
+
+Okay, never mind. I can just search div table and look at the ids. I honestly found the above by luck. Thankfully. Lol.
+
+### Collecting all page tables
+```{r}
+table_names <- paste0("#", table_names)
+table_names
+```
+
+Function to grab them all --
+
+```{r}
+grab_table <- function(this_html_name) {
+  this_table <- html_k %>% html_nodes(this_html_name) %>% html_table()
+  this_table <- this_table[[1]]
+  this_table <- clean_stats(this_table)
+  this_table
+}
+```
+
+The above works well after just some testing.
+
+```{r}
+this_game_stats <- lapply(table_names, grab_table)
+```
+
+We obviously want to save these data for later use. I want to save them as csv's with unique names.
+
+```{r}
+bball_ref  <- strsplit(strsplit(url, "boxscores/")[[1]][2], ".html")[[1]][1]
+table      <- gsub("_", "-", gsub("#box_", "", table_names))
+file_names <- paste0(bball_ref, "-", table)
+file_names
+```
+
+We are going to for loop to save these.
+
+```{r}
+for (ix in 1:length(this_game_stats)) {
+  write.csv(this_game_stats[[ix]], paste0(file_names[ix], ".csv"))
+}
+```
+
+This works quite beautifully. Yay. So What happens next?
+
+# Now, for all of the games
+I need to write down a main function that does all of this for the playoff game urls we collected in `games`.
+
+Recall what `games` looks like.
+```{r}
+head(games)
+```
+
+Let's fix games to have full urls.
+
+```{r}
+# install.packages("dplyr")
+library(dplyr)
+games_full <- games %>% mutate(url=paste0("https://www.basketball-reference.com", as.character(url)))
+head(games_full)
+```
+
+We need a main function that will take all of this information and return tables.
+
+```{r}
+j <- 5
+html_j <- read_html(games_full[j,2])
+
+page_title <- html_j %>% html_nodes("h1") %>% html_text()
+page_title
+
+
+teams <- strsplit(page_title, "( at )|( Box)")[[1]][1:2]
+teams
+
+
+table_names <- html_j %>% html_nodes("div table") %>% html_attr("id")
+table_names
+
+clean_stats <- function(bbtable) {
+  header_ix <- grep(pattern="Starters|Reserves", bbtable[,1])
+  labels    <- bbtable[header_ix[1],]
+  labels[1] <- "Player"
+
+  bbtable <- bbtable[-header_ix,]
+  names(bbtable) <- labels
+  bbtable
+}
+
+html_j %>% html_nodes(table_names[1])
+
+
+grab_table <- function(this_html_name, html_obj) {
+  this_table <- html_j %>% html_nodes(table_names[1]) %>% html_table()
+  this_table <- this_table[[1]]
+  this_table <- clean_stats(this_table)
+  this_table
+}
+
+html_j
+
+this_game_stats <- lapply(table_names, function(x) grab_table(x, html_j))
+
+bball_ref  <- strsplit(strsplit(url, "boxscores/")[[1]][2], ".html")[[1]][1]
+table      <- gsub("_", "-", gsub("#box_", "", table_names))
+file_names <- paste0(bball_ref, "-", table)
+file_names
+
+for (ix in 1:length(this_game_stats)) {
+  write.csv(this_game_stats[[ix]], paste0(file_names[ix], ".csv"))
+}
+
+
+
+```
+
+THE ARE YOU FUCKNING KIDDING ME MOMENT:!!!
+!!! WHAT THE SHIT !!!
+
+```{r}
+html_table(html_j)
+```
+
+```{r}
+clean_stats <- function(bbtable) {
+  header_ix <- grep(pattern="Starters|Reserves", bbtable[,1])
+  labels    <- bbtable[header_ix[1],]
+  labels[1] <- "Player"
+
+  bbtable <- bbtable[-header_ix,]
+  names(bbtable) <- labels
+  bbtable
+}
+
+
+grab_table <- function(this_html_name) {
+  this_table <- html_k %>% html_nodes(this_html_name) %>% html_table()
+  this_table <- this_table[[1]]
+  this_table <- clean_stats(this_table)
+  this_table
+}
+
+
+main <- function(game_url) {
+  this_html   <- read_html(games_url)
+  page_title  <- this_html %>% html_nodes("h1") %>% html_text()
+  teams       <- strsplit(page_title, "( at )|( Box)")[[1]][1:2]
+  table_names <- this_html %>% html_nodes("div table") %>% html_attr("id")
+  
+  this_game_stats <- lapply(table_names, grab_table)
+
+  bball_ref  <- strsplit(strsplit(url, "boxscores/")[[1]][2], ".html")[[1]][1]
+  table      <- gsub("_", "-", gsub("#box_", "", table_names))
+  file_names <- paste0(bball_ref, "-", table)
+  file_names
+
+for (ix in 1:length(this_game_stats)) {
+  write.csv(this_game_stats[[ix]], paste0(file_names[ix], ".csv"))
+}
+}
+```
+
+
+
+
+I'm so tired.

@@ -1,0 +1,42 @@
+---
+title: "Open Questions"
+author: "Edie Espejo"
+date: "3/3/2019"
+output: html_document
+---
+
+# Exploratory
+1. Who plays the most minutes in general? How is time distributed amongst Klay, KD, Green, and Curry?
+
+2. Do all teams switch up their minutes? Or do they all use their players pretty much the same? (i.e. are they using their top 3/4 players at the same right almost all the time?)
+
+3. How splashy are the splash bros compared to other sharp 3 point shooters in the playoffs?
+
+
+# Causal Effects
+There are several causal items we can look at here. We can start small/simple..
+
+Let W1: Win previous game
+    W2: Home/away
+    W3: Team 3P %
+    W4: Team RB %
+    W5: Team TO %
+    W6: Team 2P %
+    A:  Time since previous game
+    Y:  Win/lose
+
+Check counterfactual outcomes. Issue is finding mathematical model that will connect the SCM to the observed data.
+
+
+# Machine learning
+Are the Warriors statistically different in any way? Run permutation tests!
+Can we see which teams are most alike? (i.e. the way they score overall)?
+Can we see which ones would make the best matchups? 
+Can we see who would win based just off of stats?
+
+These would be interesting results that may drive future research.
+
+
+# Data Visualization
+Times series graphs on fatigue
+Animated graphs for each of the players to show decline or improvement from previous game...?
