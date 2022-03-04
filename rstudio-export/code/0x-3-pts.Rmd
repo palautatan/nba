@@ -23,6 +23,12 @@ rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 
 rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Klay Thompson") %>% pull(X3P)))
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
+
+rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Kevin Durant") %>% pull(X3P)))
+rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
+
+rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Draymond Green") %>% pull(X3P)))
+rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 ```
 
 ```{r three-pts-a}
@@ -35,9 +41,15 @@ rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 
 rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Klay Thompson") %>% pull(X3PA)))
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
+
+rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Kevin Durant") %>% pull(X3PA)))
+rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
+
+rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Draymond Green") %>% pull(X3PA)))
+rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 ```
 
-```{r three-pts-a}
+```{r three-pts}
 library(dplyr)
 rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Team Totals") %>% pull(X3P.)))
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
@@ -46,6 +58,8 @@ rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Stephen Curr
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 
 rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Klay Thompson") %>% pull(X3P.)))
+rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
+rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Kevin Durant") %>% pull(X3P.)))
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 ```
 
@@ -58,6 +72,9 @@ rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Stephen Curr
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 
 rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Klay Thompson") %>% pull(PTS)))
+rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
+
+rawr <- function(df) as.numeric(as.character(df %>% filter(Player=="Kevin Durant") %>% pull(PTS)))
 rawr(gsw_1) + rawr(gsw_2) + rawr(gsw_3) + rawr(gsw_4)
 ```
 
